@@ -35,13 +35,15 @@ curl -X POST "http://localhost:8000/detect" \
 ```bash
 pip install -r requirements.txt
 ```
-2. Убедитесь, что веса модели доступны локально:
-- По умолчанию путь: `D:\\TrainModelTbank\\runs\\detect\\logo_detection3\\weights\\best.pt`
-- Или задайте переменные окружения:
+2. Настройка весов модели:
+- По умолчанию путь внутри проекта: `weights/best.pt`
+- Рекомендуется автоскачивание по публичной ссылке (Яндекс.Диск):
 ```bash
-set WEIGHTS_PATH=D:\\path\\to\\best.pt
-:: при наличии URL можно скачать при старте
-set WEIGHTS_URL=https://.../best.pt
+set WEIGHTS_URL=https://disk.yandex.ru/d/rZ0bPhrG0MZuFQ
+```
+- Либо укажите локальный путь к весам:
+```bash
+set WEIGHTS_PATH=D:\\weights\\best.pt
 ```
 3. Запустить сервис:
 ```bash
@@ -55,7 +57,7 @@ docker build -t tbank-logo-api .
 ```
 Запуск (с локальными весами, проброс порта 8000):
 ```bash
-docker run --rm -p 8000:8000 -e WEIGHTS_PATH=/weights/best.pt -v D:\\TrainModelTbank\\runs\\detect\\logo_detection3\\weights:/weights tbank-logo-api
+docker run --rm -p 8000:8000 -e WEIGHTS_PATH=/weights/best.pt -v D:\\weights:/weights tbank-logo-api
 ```
 Либо скачать веса по URL при старте (пример с Яндекс.Диском):
 ```bash
@@ -102,7 +104,12 @@ python scripts/download_yadisk_public.py --public-link "https://disk.yandex.ru/d
 - Для инференса — фиксация детерминированных преобразований и ограничение времени обработки; допускается батч=1.
 
 ### Публикация весов и валидационного набора
-- Рекомендуется загрузить `best.pt` и валидационную выборку в открытый доступ (GitHub Releases, облако) и указать ссылки здесь.
+- Веса `best.pt` (Яндекс.Диск): https://disk.yandex.ru/d/rZ0bPhrG0MZuFQ
+- Тестовый набор (папка `test/images`, `test/labels` на Яндекс.Диск): https://disk.yandex.ru/d/8wH2owJfcRL6Gg
+  - Если защита капчей мешает автоскачиванию в контейнере, скачайте вручную и используйте `WEIGHTS_PATH`.
+
+### Ссылки
+- Репозиторий GitHub: https://github.com/piledreke/tbank-logo-detector
 
 ### Лицензия
 MIT
