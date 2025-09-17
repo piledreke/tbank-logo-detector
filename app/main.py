@@ -7,7 +7,7 @@
 """
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.cors import CORSMiddleware
@@ -124,6 +124,64 @@ async def detect_logo(file: UploadFile = File(...)) -> DetectionResponse:
         async with semaphore:
             detections = detector.detect(image_bytes)
         return DetectionResponse(detections=detections)
+    except FileNotFoundError as e:
+        return JSONResponse(status_code=500, content=ErrorResponse(error="Weights not found", detail=str(e)).model_dump())
+    except Exception as e:
+        return JSONResponse(status_code=500, content=ErrorResponse(error="Internal error", detail=str(e)).model_dump())
+
+
+@app.post("/detect-image", responses={200: {"content": {"image/png": {}}}, 400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}})
+async def detect_image(file: UploadFile = File(...)) -> Response:
+    """Возвращает исходное изображение с отрисованными bbox (PNG)."""
+    if file.content_type not in {
+        "image/jpeg",
+        "image/png",
+        "image/bmp",
+        "image/webp",
+    }:
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+
+    image_bytes = await file.read()
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    # Ограничение размера файла
+    max_bytes = settings.MAX_FILE_SIZE_MB * 1024 * 1024
+    if len(image_bytes) > max_bytes:
+        raise HTTPException(status_code=413, detail=f"File too large (> {settings.MAX_FILE_SIZE_MB} MB)")
+
+    # Проверка валидности изображения и ограничения по пикселям
+    try:
+        from PIL import Image
+        from io import BytesIO
+
+        im = Image.open(BytesIO(image_bytes))
+        im.verify()
+        im = Image.open(BytesIO(image_bytes)).convert("RGB")
+        w, h = im.size
+        if w * h > settings.MAX_IMAGE_PIXELS:
+            raise HTTPException(status_code=413, detail="Image pixels exceed limit")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image file")
+
+    try:
+        # Детекция
+        detections = detector.detect(image_bytes)
+
+        # Отрисовка bbox поверх изображения
+        from PIL import ImageDraw
+        draw = ImageDraw.Draw(im, "RGBA")
+        for d in detections:
+            bb = d.bbox
+            draw.rectangle([(bb.x_min, bb.y_min), (bb.x_max, bb.y_max)], outline=(0, 188, 212, 255), width=3)
+            draw.rectangle([(bb.x_min, bb.y_min), (bb.x_max, bb.y_max)], fill=(0, 188, 212, 64))
+
+        from io import BytesIO
+        buf = BytesIO()
+        im.save(buf, format="PNG")
+        return Response(content=buf.getvalue(), media_type="image/png")
     except FileNotFoundError as e:
         return JSONResponse(status_code=500, content=ErrorResponse(error="Weights not found", detail=str(e)).model_dump())
     except Exception as e:

@@ -43,6 +43,7 @@
     const img = document.getElementById('preview');
     const canvas = document.getElementById('overlay');
     const pre = document.getElementById('json');
+    let lastDetections = null;
 
     let file = null;
 
@@ -51,12 +52,9 @@
       if (!file) return;
       const url = URL.createObjectURL(file);
       img.onload = () => {
-        // размер холста = реальному отображаемому размеру изображения
-        const rect = img.getBoundingClientRect();
-        canvas.width = Math.round(rect.width);
-        canvas.height = Math.round(rect.height);
-        canvas.style.width = rect.width + 'px';
-        canvas.style.height = rect.height + 'px';
+        fitCanvasToImage();
+        redrawIfNeeded();
+        observeImageResize();
       };
       img.src = url;
       detectBtn.disabled = false;
@@ -77,9 +75,10 @@
         const resp = await fetch('/detect', { method: 'POST', body: form });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.detail || data.error || 'Ошибка');
-        pre.textContent = JSON.stringify(data, null, 2);
-        statusEl.textContent = `Найдено: ${Array.isArray(data.detections) ? data.detections.length : 0}`;
-        drawBoxes(data.detections || []);
+        lastDetections = Array.isArray(data.detections) ? data.detections : [];
+        pre.textContent = JSON.stringify({ detections: lastDetections }, null, 2);
+        statusEl.textContent = `Найдено: ${lastDetections.length}`;
+        drawBoxes(lastDetections);
         statusEl.textContent = 'Готово';
       } catch (e) {
         statusEl.textContent = 'Ошибка: ' + e.message;
@@ -131,6 +130,33 @@
         const h = y2 - y1;
         ctx.strokeRect(x1, y1, w, h);
         ctx.fillRect(x1, y1, w, h);
+      }
+    }
+
+    function fitCanvasToImage() {
+      const rect = img.getBoundingClientRect();
+      const w = Math.max(1, Math.round(rect.width));
+      const h = Math.max(1, Math.round(rect.height));
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+    }
+
+    function redrawIfNeeded() {
+      if (lastDetections && lastDetections.length) {
+        drawBoxes(lastDetections);
+      }
+    }
+
+    let ro;
+    function observeImageResize() {
+      if (window.ResizeObserver) {
+        ro?.disconnect?.();
+        ro = new ResizeObserver(() => { fitCanvasToImage(); redrawIfNeeded(); });
+        ro.observe(img);
+      } else {
+        window.addEventListener('resize', () => { fitCanvasToImage(); redrawIfNeeded(); });
       }
     }
   </script>
