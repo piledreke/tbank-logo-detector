@@ -13,9 +13,9 @@ button[disabled] { opacity:.6; cursor:not-allowed; }
 #status { color: var(--muted); }
 
 .preview { display:grid; grid-template-columns: 1fr 360px; gap:16px; }
-.canvas-wrap { position: relative; background: var(--card); border:1px solid #22313f; border-radius:10px; padding:6px; display:flex; align-items:center; justify-content:center; }
+.canvas-wrap { position: relative; background: var(--card); border:1px solid #22313f; border-radius:10px; padding:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
 img#preview { max-width:100%; height:auto; display:block; }
-canvas#overlay { position:absolute; inset:6px; }
+canvas#overlay { position:absolute; inset:0; }
 pre#json { background: var(--card); border:1px solid #22313f; border-radius:10px; padding:12px; overflow:auto; }
 
 footer { text-align:center; margin-top: 16px; }

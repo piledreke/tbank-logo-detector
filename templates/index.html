@@ -49,11 +49,12 @@
       if (!file) return;
       const url = URL.createObjectURL(file);
       img.onload = () => {
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        // подгоняем размер canvas к реальному отображению
-        canvas.style.width = img.clientWidth + 'px';
-        canvas.style.height = img.clientHeight + 'px';
+        // размер холста = реальному отображаемому размеру изображения
+        const rect = img.getBoundingClientRect();
+        canvas.width = Math.round(rect.width);
+        canvas.height = Math.round(rect.height);
+        canvas.style.width = rect.width + 'px';
+        canvas.style.height = rect.height + 'px';
       };
       img.src = url;
       detectBtn.disabled = false;
@@ -90,12 +91,18 @@
       ctx.strokeStyle = '#00bcd4';
       ctx.font = '16px Inter, Arial';
       ctx.fillStyle = 'rgba(0,188,212,0.25)';
+      const scaleX = canvas.width / img.naturalWidth;
+      const scaleY = canvas.height / img.naturalHeight;
       for (const d of dets) {
         const { x_min, y_min, x_max, y_max } = d.bbox;
-        const w = x_max - x_min;
-        const h = y_max - y_min;
-        ctx.strokeRect(x_min, y_min, w, h);
-        ctx.fillRect(x_min, y_min, w, h);
+        const x1 = Math.round(x_min * scaleX);
+        const y1 = Math.round(y_min * scaleY);
+        const x2 = Math.round(x_max * scaleX);
+        const y2 = Math.round(y_max * scaleY);
+        const w = x2 - x1;
+        const h = y2 - y1;
+        ctx.strokeRect(x1, y1, w, h);
+        ctx.fillRect(x1, y1, w, h);
       }
     }
   </script>
