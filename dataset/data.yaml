@@ -1,0 +1,7 @@
+path: D:\TrainModelTbank\dataset
+train: train/images
+val: val/images
+test: test/images
+
+names:
+  0: logo  # Замените на имя вашего класса
