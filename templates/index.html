@@ -17,7 +17,8 @@
       <label class="btn">Выбрать файл
         <input id="fileInput" type="file" accept="image/*" hidden />
       </label>
-      <button id="detectBtn" disabled>Детектировать</button>
+      <button id="detectBtn" disabled>Искать</button>
+      <button id="paintBtn" disabled>Вернуть изображение с bbox</button>
       <span id="status"></span>
     </section>
 
@@ -37,6 +38,7 @@
   <script>
     const fileInput = document.getElementById('fileInput');
     const detectBtn = document.getElementById('detectBtn');
+    const paintBtn = document.getElementById('paintBtn');
     const statusEl = document.getElementById('status');
     const img = document.getElementById('preview');
     const canvas = document.getElementById('overlay');
@@ -58,6 +60,7 @@
       };
       img.src = url;
       detectBtn.disabled = false;
+      paintBtn.disabled = false;
       statusEl.textContent = '';
       pre.textContent = '';
       const ctx = canvas.getContext('2d');
@@ -75,12 +78,37 @@
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.detail || data.error || 'Ошибка');
         pre.textContent = JSON.stringify(data, null, 2);
+        statusEl.textContent = `Найдено: ${Array.isArray(data.detections) ? data.detections.length : 0}`;
         drawBoxes(data.detections || []);
         statusEl.textContent = 'Готово';
       } catch (e) {
         statusEl.textContent = 'Ошибка: ' + e.message;
       } finally {
         detectBtn.disabled = false;
+      }
+    });
+
+    paintBtn.addEventListener('click', async () => {
+      if (!file) return;
+      statusEl.textContent = 'Отрисовка...';
+      const form = new FormData();
+      form.append('file', file);
+      try {
+        const resp = await fetch('/detect-image', { method: 'POST', body: form });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.detail || err.error || 'Ошибка');
+        }
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        img.src = url;
+        // сбросить canvas, так как bbox уже нарисованы на изображении
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pre.textContent = 'PNG с отрисованными bbox';
+        statusEl.textContent = 'Готово';
+      } catch (e) {
+        statusEl.textContent = 'Ошибка: ' + e.message;
       }
     });
 
