@@ -7,7 +7,9 @@
 """
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 import logging
@@ -37,6 +39,14 @@ app.add_middleware(
 
 detector = YOLODetector()
 semaphore = asyncio.Semaphore(settings.MAX_CONCURRENCY)
+templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
 
 # Опциональный тёплый прогон модели для снижения задержки первого запроса
 if settings.WARMUP:

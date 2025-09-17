@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T‑Bank Logo Detector</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>T‑Bank Logo Detector</h1>
+      <p class="subtitle">Загрузите изображение и получите координаты найденного логотипа</p>
+    </header>
+
+    <section class="uploader">
+      <label class="btn">Выбрать файл
+        <input id="fileInput" type="file" accept="image/*" hidden />
+      </label>
+      <button id="detectBtn" disabled>Детектировать</button>
+      <span id="status"></span>
+    </section>
+
+    <section class="preview">
+      <div class="canvas-wrap">
+        <img id="preview" alt="preview" />
+        <canvas id="overlay"></canvas>
+      </div>
+      <pre id="json"></pre>
+    </section>
+
+    <footer>
+      <a href="/docs" target="_blank">Swagger Docs</a>
+    </footer>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const detectBtn = document.getElementById('detectBtn');
+    const statusEl = document.getElementById('status');
+    const img = document.getElementById('preview');
+    const canvas = document.getElementById('overlay');
+    const pre = document.getElementById('json');
+
+    let file = null;
+
+    fileInput.addEventListener('change', (e) => {
+      file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        // подгоняем размер canvas к реальному отображению
+        canvas.style.width = img.clientWidth + 'px';
+        canvas.style.height = img.clientHeight + 'px';
+      };
+      img.src = url;
+      detectBtn.disabled = false;
+      statusEl.textContent = '';
+      pre.textContent = '';
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    detectBtn.addEventListener('click', async () => {
+      if (!file) return;
+      statusEl.textContent = 'Обработка...';
+      detectBtn.disabled = true;
+      const form = new FormData();
+      form.append('file', file);
+      try {
+        const resp = await fetch('/detect', { method: 'POST', body: form });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || data.error || 'Ошибка');
+        pre.textContent = JSON.stringify(data, null, 2);
+        drawBoxes(data.detections || []);
+        statusEl.textContent = 'Готово';
+      } catch (e) {
+        statusEl.textContent = 'Ошибка: ' + e.message;
+      } finally {
+        detectBtn.disabled = false;
+      }
+    });
+
+    function drawBoxes(dets) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#00bcd4';
+      ctx.font = '16px Inter, Arial';
+      ctx.fillStyle = 'rgba(0,188,212,0.25)';
+      for (const d of dets) {
+        const { x_min, y_min, x_max, y_max } = d.bbox;
+        const w = x_max - x_min;
+        const h = y_max - y_min;
+        ctx.strokeRect(x_min, y_min, w, h);
+        ctx.fillRect(x_min, y_min, w, h);
+      }
+    }
+  </script>
+</body>
+</html>
+
+
