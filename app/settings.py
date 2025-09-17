@@ -19,6 +19,16 @@ class Settings:
     # Производительность
     DEVICE: str = os.getenv("DEVICE", "auto")  # "cpu", "cuda", "auto"
 
+    # Ограничения и таймауты
+    MAX_FILE_SIZE_MB: int = int(os.getenv("MAX_FILE_SIZE_MB", "10"))  # лимит входного файла
+    REQUEST_TIMEOUT_S: float = float(os.getenv("REQUEST_TIMEOUT_S", "10"))  # таймаут инференса
+    MAX_IMAGE_PIXELS: int = int(os.getenv("MAX_IMAGE_PIXELS", "25000000"))  # лимит на количество пикселей (напр. 5000x5000)
+
+    # Логи
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    MAX_CONCURRENCY: int = int(os.getenv("MAX_CONCURRENCY", "4"))
+    WARMUP: int = int(os.getenv("WARMUP", "0"))
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

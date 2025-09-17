@@ -1,6 +1,17 @@
+"""
+Модуль инференса YOLO-модели для детекции логотипа.
+
+Здесь реализована обёртка над Ultralytics YOLO с возможностью:
+- загрузки весов из локального пути или по публичной ссылке (в т.ч. Яндекс.Диск);
+- детекции и возврата bbox в абсолютных пикселях;
+- логирования времени инференса и параметров запуска.
+"""
+
 import os
 import tempfile
-from typing import List
+import time
+import logging
+from typing import List, Dict, Any
 
 import torch
 from ultralytics import YOLO
@@ -10,11 +21,19 @@ from .settings import get_settings
 
 
 class YOLODetector:
+    """Обёртка для загрузки модели и выполнения инференса."""
+
     def __init__(self) -> None:
         self.settings = get_settings()
+        self.logger = logging.getLogger("yolo.inference")
+        self.weights_path: str | None = None
         self.model = self._load_model()
 
     def _ensure_weights(self, weights_path: str) -> str:
+        """Проверяет наличие весов локально и при необходимости скачивает по ссылке.
+
+        Возвращает локальный путь к файлу весов.
+        """
         if os.path.exists(weights_path):
             return weights_path
 
@@ -30,7 +49,9 @@ class YOLODetector:
         )
 
     def _load_model(self) -> YOLO:
+        """Загружает модель YOLO и переносит на выбранное устройство (CPU/GPU)."""
         weights_path = self._ensure_weights(self.settings.DEFAULT_WEIGHTS_PATH)
+        self.weights_path = weights_path
         device = (
             0
             if self.settings.DEVICE == "cuda"
@@ -71,6 +92,8 @@ class YOLODetector:
         return url
 
     def detect(self, image_bytes: bytes) -> List[Detection]:
+        """Выполняет детекцию на одном изображении (байты)."""
+        t0 = time.perf_counter()
         with tempfile.NamedTemporaryFile(suffix=".png", delete=True) as tmp:
             tmp.write(image_bytes)
             tmp.flush()
@@ -86,9 +109,9 @@ class YOLODetector:
 
         detections: List[Detection] = []
         for r in results:
-            h, w = r.orig_shape  # height, width
+            h, w = r.orig_shape
             for b in r.boxes:
-                # b.xyxy is tensor [[x1,y1,x2,y2]] in absolute floats
+                # b.xyxy — абсолютные координаты [x1, y1, x2, y2]
                 x1, y1, x2, y2 = [int(max(0, v)) for v in b.xyxy[0].tolist()]
                 x1 = max(0, min(x1, w - 1))
                 y1 = max(0, min(y1, h - 1))
@@ -98,7 +121,23 @@ class YOLODetector:
                 bbox = BoundingBox(x_min=x1, y_min=y1, x_max=x2, y_max=y2)
                 detections.append(Detection(bbox=bbox))
 
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        self.logger.info(
+            "Инференс: %d детекций, %.1f ms (device=%s, conf=%.2f, iou=%.2f, img=%d)",
+            len(detections), elapsed_ms, str(self.model.device), self.settings.CONF_THRESHOLD, self.settings.IOU_THRESHOLD, self.settings.IMG_SIZE
+        )
         return detections
+
+    def runtime_info(self) -> Dict[str, Any]:
+        """Диагностическая информация для эндпоинта /health."""
+        return {
+            "device": str(self.model.device),
+            "weights_path": self.weights_path,
+            "weights_exists": bool(self.weights_path and os.path.exists(self.weights_path)),
+            "conf_threshold": self.settings.CONF_THRESHOLD,
+            "iou_threshold": self.settings.IOU_THRESHOLD,
+            "img_size": self.settings.IMG_SIZE,
+        }
 
 
 

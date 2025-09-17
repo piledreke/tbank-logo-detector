@@ -1,3 +1,9 @@
+"""
+Скрипт валидации детектора на размеченной выборке (YOLO-формат).
+
+Считает Precision/Recall/F1 при заданном пороге IoU (по умолчанию 0.5).
+"""
+
 import argparse
 import json
 import os
@@ -29,7 +35,7 @@ def parse_yolo_label(label_path: Path, image_size: Tuple[int, int]) -> List[Box]
         if len(parts) != 5:
             continue
         _, cx, cy, bw, bh = map(float, parts)
-        # YOLO format is relative cx, cy, bw, bh in [0,1]
+        # YOLO-формат: относительные координаты cx, cy, bw, bh в [0,1]
         abs_w = bw * w
         abs_h = bh * h
         cx_abs = cx * w

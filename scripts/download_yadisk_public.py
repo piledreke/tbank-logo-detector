@@ -1,3 +1,11 @@
+"""
+Утилита загрузки файлов/папок с публичной ссылки Яндекс.Диска.
+
+Примеры:
+  # скачать test/images в локальную папку dataset/test/images
+  python scripts/download_yadisk_public.py --public-link "<link>" --remote-path "test/images" --dest dataset/test/images
+"""
+
 import argparse
 import json
 import os
