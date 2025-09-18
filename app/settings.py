@@ -29,6 +29,9 @@ class Settings:
     MAX_CONCURRENCY: int = int(os.getenv("MAX_CONCURRENCY", "4"))
     WARMUP: int = int(os.getenv("WARMUP", "0"))
 
+    # UI
+    BACKGROUND_URL: str = os.getenv("BACKGROUND_URL", "/static/bg.jpg")
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
