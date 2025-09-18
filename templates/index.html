@@ -50,17 +50,18 @@
   <div class="container">
     <header>
       <h1>Детекция логотипа Т‑Банка</h1>
-      <p class="sub">Перетащите изображение или выберите файл и нажмите «Отправить»</p>
+      <p class="sub">Перетащите изображение или нажмите «Выбрать файл», затем выполните поиск</p>
     </header>
     <div class="content">
       <div id="drop" class="dropzone">Перетащите файл сюда или нажмите, чтобы выбрать<input id="file" type="file" accept="image/*" style="display:none"/></div>
       <div class="actions">
-        <button id="send" class="btn">Отправить JSON</button>
-        <button id="sendImg" class="btn" style="background:#00bcd4;color:#fff;">Отправить с отрисовкой</button>
+        <button id="pick" class="btn">Выбрать файл</button>
+        <button id="send" class="btn" style="background:#00c853;">Искать</button>
+        <button id="sendImg" class="btn" style="background:#00bcd4;color:#fff;">Вернуть изображение с bbox</button>
         <span id="hint" style="color:#666; font-size:13px;">Поддержка: JPEG, PNG, BMP, WEBP</span>
       </div>
-      <img id="preview" style="max-width:100%; display:none; border-radius:12px; border:1px solid var(--card-border)"/>
       <div id="resp" class="result" style="display:none;"></div>
+      <div style="text-align:center; font-size:13px;"><a href="/docs" style="color:#2a75f3; text-decoration:none;">Swagger Docs</a></div>
     </div>
     <footer>
       Запросы: <code>/detect</code> (JSON) и <code>/detect-image</code> (PNG с bbox). Лимиты и таймаут задаются через переменные окружения.
@@ -70,13 +71,14 @@
   <script>
     const dz = document.getElementById('drop');
     const input = document.getElementById('file');
+    const pick = document.getElementById('pick');
     const send = document.getElementById('send');
     const sendImg = document.getElementById('sendImg');
     const resp = document.getElementById('resp');
-    const preview = document.getElementById('preview');
     let currentFile = null;
 
     dz.addEventListener('click', () => input.click());
+    pick.addEventListener('click', () => input.click());
     dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('dragover'); });
     dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
     dz.addEventListener('drop', (e) => {
@@ -84,16 +86,14 @@
       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
         currentFile = e.dataTransfer.files[0];
         dz.textContent = currentFile.name;
-        preview.src = URL.createObjectURL(currentFile);
-        preview.style.display = 'block';
+        // превью отключено по просьбе пользователя
       }
     });
     input.addEventListener('change', () => {
       if (input.files[0]) {
         currentFile = input.files[0];
         dz.textContent = currentFile.name;
-        preview.src = URL.createObjectURL(currentFile);
-        preview.style.display = 'block';
+        // превью отключено по просьбе пользователя
       }
     });
 
@@ -107,7 +107,7 @@
         if (ct.includes('application/json')) {
           const data = await r.json(); resp.textContent = JSON.stringify(data, null, 2);
         } else if (ct.includes('image/png')) {
-          const blob = await r.blob(); preview.src = URL.createObjectURL(blob); resp.textContent = 'Отрисовано поверх изображения.';
+          const blob = await r.blob(); const url = URL.createObjectURL(blob); window.open(url, '_blank'); resp.textContent = 'Изображение с bbox открыто в новой вкладке.';
         } else {
           resp.textContent = await r.text();
         }
